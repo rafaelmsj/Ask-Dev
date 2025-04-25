@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS // Use variáveis de ambiente!
+        pass: process.env.EMAIL_PASS
     }
 });
 
@@ -43,14 +43,17 @@ router.post('/cadastro', async (req, res) => {
     try {
         const { nome, data_nascimento, email, senha, confirmaSenha } = req.body;
 
-        // Validações como antes...
 
         const nomeExiste = await query('SELECT * FROM usuario WHERE nome = ?', [nome.toLowerCase().trim()]);
         const emailExiste = await query('SELECT * FROM usuario WHERE email = ?', [email.toLowerCase().trim()]);
         const emailPendente = await query('SELECT * FROM usuarios_pendentes WHERE email = ?', [email.toLowerCase().trim()]);
 
-        if (nomeExiste.length > 0 || emailExiste.length > 0 || emailPendente.length > 0) {
+        if (nomeExiste.length > 0 || emailExiste.length > 0) {
             return res.status(400).json({ success: false, message: 'E-mail ou nome já estão cadastrados.' });
+        }
+
+        if (emailPendente.length > 0){
+            return res.status(400).json({ success: false, message: 'Já foi enviado um e-mail de confirmação, Por favor verifique.' });
         }
 
         if (senha !== confirmaSenha) {
@@ -72,7 +75,7 @@ router.post('/cadastro', async (req, res) => {
         );
 
         const token = jwt.sign({ email: email.trim().toLowerCase() }, jwtSecret, { expiresIn: '15min' });
-        const link = `http://192.168.2.161:3000/confirmar-email?token=${token}`;
+        const link = `http://${process.env.IP}:${process.env.PORT}/confirmar-email?token=${token}`;
 
         // Envia e-mail
         await transporter.sendMail({
@@ -83,6 +86,7 @@ router.post('/cadastro', async (req, res) => {
         });
 
         res.status(200).json({ success: true, message: 'E-mail de confirmação enviado. Verifique sua caixa de entrada.' });
+        console.log(`Um novo usúario tentou se cadastrar, E-mail de confirmação enviado para "${email}"`)
 
     } catch (error) {
         console.error('Erro ao cadastrar:', error);
@@ -117,6 +121,7 @@ router.get('/confirmar-email', async (req, res) => {
         await query('DELETE FROM usuarios_pendentes WHERE email = ?', [email]);
 
         res.send('E-mail confirmado com sucesso! Agora você pode fazer login.');
+        console.log(`O e-mail enviado para "${email}" foi confirmado, Cadastro realizado!`)
 
     } catch (err) {
         return res.status(400).send('Token inválido ou expirado.');

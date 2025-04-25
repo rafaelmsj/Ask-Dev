@@ -4,6 +4,7 @@ const app = express() //Carregando express dentro da const app
 app.use(express.json()) //Informando que vai ser usado JSON
 app.use(express.static('public')) // Informando a pasta de arquivos estaticos
 
+require('dotenv').config();
 
 //Importando Rotas
 const Cadastro = require('./routes/user/Cadastro')
@@ -36,4 +37,4 @@ app.use('/', Cadastro)
 
 
 
-app.listen(3000, () => { console.log('Servidor Online!') }) // Criando um servidor
+app.listen(process.env.PORT, () => { console.log('Servidor Online!') }) // Criando um servidor
